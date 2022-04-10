@@ -27,6 +27,12 @@ Log to Azure
 az login
 ```
 
+
+Attach a new disk
+```
+az vm disk attach --disk $diskId --new --resource-group MyResourceGroup --size-gb 128 --sku Standard_LRS --vm-name MyVm
+```
+
 Turn on the VM
 
 ```cmd
