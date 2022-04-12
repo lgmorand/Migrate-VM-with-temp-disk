@@ -29,18 +29,14 @@ Turn on the VM
 az vm start -g MyResourceGroup -n MyVm
 ```
 
-Execute remotely a command (can be done with Invoke-Command or VM extension) : 
+Execute remotely a command (can be done with Invoke-Command (powershell) or VM extension) : 
 
-
-On the VM, the command should move the pagefile.sys. It can be done by changing the regkey and reboot the VM
+On the VM, the command should move the pagefile.sys. It can be done by changing the regkey 
 
 ```cmd
 az vm run-command invoke -g MyResourceGroup -n MyVm --command-id RunShellScript --scripts 'New-ItemProperty -Path "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -Name PagingFiles -Value "C:\Pagefile.sys 0 0" –Force' --parameters hello world
 ```
 
-``` powershell
- New-ItemProperty -Path "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -Name PagingFiles -Value "C:\Pagefile.sys 0 0" –Force
-```
 
 Restart the VM
 
