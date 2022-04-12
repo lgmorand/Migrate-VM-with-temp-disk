@@ -47,12 +47,12 @@ az vm restart -g MyResourceGroup -n MyVm
 Create snapshot from the VM
 ```
 osDiskId=$(az vm show \
-   -g myResourceGroup \
+   -g MyResourceGroup \
    -n myVM \
    --query "storageProfile.osDisk.managedDisk.id" \
    -o tsv)
 az snapshot create \
-    -g myResourceGroup \
+    -g MyResourceGroup \
 	--source "$osDiskId" \
 	--name osDisk-backup
 ```
@@ -61,13 +61,13 @@ Create a diskless VM from snapshot
 
 ```
 #Get the snapshot Id 
-snapshotId=$(az snapshot show --name $snapshotName --resource-group $resourceGroupName --query [id] -o tsv)
+snapshotId=$(az snapshot show --name $snapshotName --resource-group $MyResourceGroup --query [id] -o tsv)
 
 #Create a new Managed Disks using the snapshot Id
-az disk create --resource-group $resourceGroupName --name $osDiskName --sku $storageType --size-gb $diskSize --source $snapshotId 
+az disk create --resource-group $MyResourceGroup --name $osDiskName --sku $storageType --size-gb $diskSize --source $snapshotId 
 
 #Create VM by attaching created managed disks as OS
-az vm create --name $virtualMachineName --resource-group $resourceGroupName --attach-os-disk $osDiskName --os-type $osType
+az vm create --name $MyNewVm --resource-group $MyResourceGroup --attach-os-disk $osDiskName --os-type $osType
 ```
 
 
