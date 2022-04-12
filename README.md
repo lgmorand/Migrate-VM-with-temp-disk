@@ -9,7 +9,6 @@ This repo is an attempt to automate the migration
 
 The script must:
 
-- Attach a data disk
 - On the VM, move the pagefile, from D (temp disk) to C (OS)
 - Reboot the VM
 - Change disk letters. D decomes T and the new data disk should become D
@@ -28,12 +27,6 @@ Log to Azure
 az login
 ```
 
-
-Attach a new disk
-```
-az vm disk attach --disk $diskId --new --resource-group MyResourceGroup --size-gb 128 --sku Standard_LRS --vm-name MyVm
-```
-
 Turn on the VM
 
 ```cmd
@@ -42,10 +35,12 @@ az vm start -g MyResourceGroup -n MyVm
 
 Execute remotely a command (can be done with Invoke-Command or VM extension) : 
 
+
+On the VM, the command should move the pagefile.sys. It can be done by changing the regkey and reboot the VM
+
 ```cmd
 az vm run-command invoke -g MyResourceGroup -n MyVm --command-id RunShellScript --scripts 'New-ItemProperty -Path "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -Name PagingFiles -Value "C:\Pagefile.sys 0 0" –Force' --parameters hello world
 ```
-On the VM, the command should move the pagefile.sys. It can be done by changing the regkey and reboot the VM
 
 ``` powershell
  New-ItemProperty -Path "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -Name PagingFiles -Value "C:\Pagefile.sys 0 0" –Force
@@ -55,26 +50,6 @@ Restart the VM
 
 ``` powershell
 az vm restart -g MyResourceGroup -n MyVm
-```
-
-Change disk letter
-
-``` powershell
-Get-Partition -DriveLetter D| Set-Partition -NewDriveLetter T
-```
-
-
-Restart the VM
-
-``` powershell
-az vm restart -g MyResourceGroup -n MyVm
-```
-
-
-Change back the pagefile.sys to D:
-
-```
-az vm run-command invoke -g MyResourceGroup -n MyVm --command-id RunShellScript --scripts 'New-ItemProperty -Path "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -Name PagingFiles -Value "D:\Pagefile.sys 0 0" –Force' --parameters hello world
 ```
 
 Create snapshot from the VM
