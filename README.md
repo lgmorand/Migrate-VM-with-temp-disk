@@ -11,10 +11,6 @@ The script must:
 
 - On the VM, move the pagefile, from D (temp disk) to C (OS)
 - Reboot the VM
-- Change disk letters. D decomes T and the new data disk should become D
-- Reboot the VM
-- On the VM, move the pagefile from C (OS) to D (data disk)
-- Reboot the VM
 - Create a snapshot of the OS disk ([doc](https://docs.microsoft.com/en-us/azure/virtual-machines/snapshot-copy-managed-disk?tabs=cli))
 - Create a new diskless VM using the snapshot ([doc](https://docs.microsoft.com/en-us/previous-versions/azure/virtual-machines/scripts/virtual-machines-linux-cli-sample-create-vm-from-snapshot))
 - Retrieve the private IP from the first VM to migrate it to the second one
