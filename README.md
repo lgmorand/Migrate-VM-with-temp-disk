@@ -18,6 +18,7 @@ The script must:
 - Reboot the VM
 - Create a snapshot of the OS disk ([doc](https://docs.microsoft.com/en-us/azure/virtual-machines/snapshot-copy-managed-disk?tabs=cli))
 - Create a new diskless VM using the snapshot ([doc](https://docs.microsoft.com/en-us/previous-versions/azure/virtual-machines/scripts/virtual-machines-linux-cli-sample-create-vm-from-snapshot))
+- Retrieve the private IP from the first VM to migrate it to the second one
 
 ## Lets do it
 
@@ -74,4 +75,52 @@ Change back the pagefile.sys to D:
 
 ```
 az vm run-command invoke -g MyResourceGroup -n MyVm --command-id RunShellScript --scripts 'New-ItemProperty -Path "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -Name PagingFiles -Value "D:\Pagefile.sys 0 0" –Force' --parameters hello world
+```
+
+Create snapshot from the VM
+```
+osDiskId=$(az vm show \
+   -g myResourceGroup \
+   -n myVM \
+   --query "storageProfile.osDisk.managedDisk.id" \
+   -o tsv)
+az snapshot create \
+    -g myResourceGroup \
+	--source "$osDiskId" \
+	--name osDisk-backup
+```
+
+Create a diskless VM from snapshot
+
+```
+#Get the snapshot Id 
+snapshotId=$(az snapshot show --name $snapshotName --resource-group $resourceGroupName --query [id] -o tsv)
+
+#Create a new Managed Disks using the snapshot Id
+az disk create --resource-group $resourceGroupName --name $osDiskName --sku $storageType --size-gb $diskSize --source $snapshotId 
+
+#Create VM by attaching created managed disks as OS
+az vm create --name $virtualMachineName --resource-group $resourceGroupName --attach-os-disk $osDiskName --os-type $osType
+```
+
+
+Transfer the private IP
+```
+# Get the IP and store it
+
+# set a temp private ip on the old VM
+
+az network nic ip-config update \
+    --name ipconfigmyVM \
+    --resource-group myResourceGroup \
+    --nic-name myVMVMNic \
+    --private-ip-address 10.0.0.99
+
+# set the IP to the second VM
+az network nic ip-config update \
+    --name ipconfigmyVM2 \
+    --resource-group myResourceGroup \
+    --nic-name myVMVMNic \
+    --private-ip-address 10.0.0.4
+
 ```
