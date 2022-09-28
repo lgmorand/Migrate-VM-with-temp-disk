@@ -21,8 +21,8 @@ export RESOURCE_GROUP=rg-test
 # Name of the old VM
 export VM_NAME=myVM
 
-# Name of the old VM
-export VM_NAME=myVM
+# Name of the new VM
+export NEW_VM_NAME=myNewVM
 
 # Name of the OS disk backup (optional)
 export BACKUP_NAME=osDisk-backup
@@ -35,13 +35,16 @@ export OSDISK_NAME=osDisk_MyVm
 
 az login
 
+# the VM must be started to execute the remote command
 az vm start -g $RESOURCE_GROUP -n $VM_NAME
 
+# move the pagefile from D to C
 az vm run-command invoke -g $RESOURCE_GROUP -n $VM_NAME --command-id RunShellScript --scripts 'New-ItemProperty -Path "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -Name PagingFiles -Value "C:\Pagefile.sys 0 0" –Force'
 
 
 # STEP 2: restart the VM
 
+# restart the VM
 az vm restart -g $RESOURCE_GROUP -n $VM_NAME
 
 # STEP 3: Create a snapshot of the OS disk
@@ -54,27 +57,38 @@ OSDISK_ID=$(az vm show \
 OSDISK_SIZE=$(az vm show \
    -g $RESOURCE_GROUP \
    -n $VM_NAME \
-   --query "storageProfile.osDisk.managedDisk.id" \
+   --query "storageProfile.osDisk.diskSizeGb" \
    -o tsv)
 OSDISK_SKU=$(az vm show \
    -g $RESOURCE_GROUP \
    -n $VM_NAME \
-   --query "storageProfile.osDisk.managedDisk.id" \
+   --query "storageProfile.osDisk.managedDisk.storageAccountType" \
    -o tsv)
+
+OSDISK_SYSTEMOS=$(az vm show \
+   -g $RESOURCE_GROUP \
+   -n $VM_NAME \
+   --query "storageProfile.osDisk.osType" \
+   -o tsv)
+
 
 SNAPSHOT_ID=$(az snapshot create \
     -g $RESOURCE_GROUP \
 	--source "$OSDISK_ID" \
-	--name $BACKUP_NAME)
+	--name $BACKUP_NAME \
+   --query "id" \
+   -o tsv)
 
 
 # STEP 4: Create a new diskless VM using the snapshot
-
-#Get the snapshot Id 
-snapshotId=$(az snapshot show --name $BACKUP_NAME --resource-group $RESOURCE_GROUP --query [id] -o tsv)
 
 #Create a new Managed Disks using the snapshot Id
 az disk create --resource-group $RESOURCE_GROUP --name $OSDISK_NAME --sku $OSDISK_SKU --size-gb $OSDISK_SIZE --source $SNAPSHOT_ID 
 
 #Create VM by attaching created managed disks as OS
-az vm create --name $MyNewVm --resource-group $RESOURCE_GROUP --attach-os-disk $OSDISK_NAME --os-type $osType
+az vm create --name $NEW_VM_NAME --resource-group $RESOURCE_GROUP --attach-os-disk $OSDISK_NAME --os-type $OSDISK_SYSTEMOS
+
+
+# Step 5: Retrieve the private IP from the first VM to migrate it to the second one
+
+
