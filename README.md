@@ -17,4 +17,4 @@ The script must:
 
 ## Improvments
 
-The script must be adapted depending on your need. if you want to batch lot of VM, if they have several disks or constraints like extension but this script is a good start.
+The script must be adapted depending on your need. if you want to batch a lot of VMs, if they have several disks or constraints like extension but this script is a good start.

@@ -16,7 +16,7 @@
 ###  VARIABLES ###
 
 # Name of the RG containing the VM
-export RESOURCE_GROUP=rg-test
+export RESOURCE_GROUP=rg-vm
 
 # Name of the old VM
 export VM_NAME=myVM
@@ -24,11 +24,14 @@ export VM_NAME=myVM
 # Name of the new VM
 export NEW_VM_NAME=myNewVM
 
+# SKY of the new VM
+export NEW_VM_SKU='Standard_D2S_v5'
+
 # Name of the OS disk backup (optional)
-export BACKUP_NAME=osDisk-backup
+export BACKUP_NAME=osDisk_backup
 
 # Name of the new disk name
-export OSDISK_NAME=osDisk_MyVm
+export OSDISK_NAME=osDisk_MyNewVm
 
 
 # STEP 1: On the VM, move the pagefile, from D (temp disk) to C (OS)
@@ -36,15 +39,18 @@ export OSDISK_NAME=osDisk_MyVm
 az login
 
 # the VM must be started to execute the remote command
+echo -e '\e[32mStarting the VM'
 az vm start -g $RESOURCE_GROUP -n $VM_NAME
 
 # move the pagefile from D to C
-az vm run-command invoke -g $RESOURCE_GROUP -n $VM_NAME --command-id RunShellScript --scripts 'New-ItemProperty -Path "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -Name PagingFiles -Value "C:\Pagefile.sys 0 0" –Force'
-
+# /!\ RunPowerShellScript or RunShellScript depending on the OS
+echo -e '\e[32mRunning a command to update registry'
+az vm run-command invoke -g $RESOURCE_GROUP -n $VM_NAME --command-id RunPowerShellScript --scripts 'New-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -Name PagingFiles -Value "C:\Pagefile.sys 0 0" -Force'
 
 # STEP 2: restart the VM
 
-# restart the VM
+# restart the VM in order to change the pagefile location
+echo -e '\e[32mRebooting the VM'
 az vm restart -g $RESOURCE_GROUP -n $VM_NAME
 
 # STEP 3: Create a snapshot of the OS disk
@@ -71,22 +77,34 @@ OSDISK_SYSTEMOS=$(az vm show \
    --query "storageProfile.osDisk.osType" \
    -o tsv)
 
+OSDISK_GENERATION=$(az vm get-instance-view \
+   -g $RESOURCE_GROUP \
+   -n $VM_NAME \
+   --query instanceView.hyperVGeneration \
+   -o tsv)
 
+echo -e '\e[32mCreating a snapshot of the OS disk'
 SNAPSHOT_ID=$(az snapshot create \
     -g $RESOURCE_GROUP \
 	--source "$OSDISK_ID" \
+   --hyper-v-generation $OSDISK_GENERATION \
 	--name $BACKUP_NAME \
    --query "id" \
    -o tsv)
 
 
+# stop the VM, because you can't have both VM with the same computer name
+az vm stop -g $RESOURCE_GROUP -n $VM_NAME
+
 # STEP 4: Create a new diskless VM using the snapshot
 
-#Create a new Managed Disks using the snapshot Id
-az disk create --resource-group $RESOURCE_GROUP --name $OSDISK_NAME --sku $OSDISK_SKU --size-gb $OSDISK_SIZE --source $SNAPSHOT_ID 
+# Create a new Managed Disks using the snapshot Id
+echo -e '\e[32mCreating a disk using the snapshot'
+az disk create --resource-group $RESOURCE_GROUP --name $OSDISK_NAME --sku $OSDISK_SKU --size-gb $OSDISK_SIZE --source $SNAPSHOT_ID --hyper-v-generation $OSDISK_GENERATION
 
 #Create VM by attaching created managed disks as OS
-az vm create --name $NEW_VM_NAME --resource-group $RESOURCE_GROUP --attach-os-disk $OSDISK_NAME --os-type $OSDISK_SYSTEMOS
+echo -e '\e[32mCreating a new VM using the disk'
+az vm create --name $NEW_VM_NAME --resource-group $RESOURCE_GROUP --attach-os-disk $OSDISK_NAME --os-type $OSDISK_SYSTEMOS --size $NEW_VM_SKU --public-ip-sku Standard
 
 
 # Step 5: Retrieve the private IP from the first VM to migrate it to the second one
